@@ -28,13 +28,23 @@ CATEGORIAS = {
     "🎮 Juegos":      "JUEGOS",
     "🚗 Uber/DiDi":   "UBER/DIDI",
     "🏥 Salud":       "SALUD",
+    "🏠 Gastos Casa": "GASTOS CASA",
+    "💵 Ahorros/Inversiones": "AHORROS/INVERSIONES",
+    "👕 Vestimenta": "VESTIMENTA",
+    "🖥️ Herramientas": "HERRAMIENTAS",
+    "💳 Créditos": "CRÉDITOS"
 }
 
 COLORES = {
-    "COMIDA":    "#FF6B6B",
-    "JUEGOS":    "#6BCB77",
+    "COMIDA": "#FF6B6B",
+    "JUEGOS": "#6BCB77",
     "UBER/DIDI": "#4D96FF",
-    "SALUD":     "#FFD93D",
+    "SALUD": "#FFD93D",
+    "GASTOS CASA": "#845EC2",    
+    "AHORROS/INVERSIONES": "#00C9A7", 
+    "VESTIMENTA": "#FF9671",       
+    "HERRAMIENTAS": "#B0B0B0",     
+    "CRÉDITOS": "#FF3D6A",             
 }
 
 MESES_ES = {
