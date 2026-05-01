@@ -1,14 +1,27 @@
 import streamlit as st
 import pandas as pd
-import json
-import os
-from datetime import date, timedelta
-from pathlib import Path
+from datetime import date
 import plotly.graph_objects as go
-import plotly.express as px
+import gspread
+from google.oauth2.service_account import Credentials
+import extra_streamlit_components as stx
+import hashlib
+
+COOKIE_NAME = "mis_gastos_auth"
+COOKIE_EXPIRY_DAYS = 30
+
+def get_cookie_manager():
+    return stx.CookieManager()
+
+def make_token(user: str, key: str) -> str:
+    raw = f"{user}:{key}:mis_gastos_salt"
+    return hashlib.sha256(raw.encode()).hexdigest()
 
 # ── Config ──────────────────────────────────────────────────────────────────
-DATA_FILE = Path.home() / ".mis_gastos.json"
+SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive",
+]
 
 CATEGORIAS = {
     "🍕 Comida":      "COMIDA",
@@ -30,16 +43,31 @@ MESES_ES = {
     9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre",
 }
 
-# ── Helpers ──────────────────────────────────────────────────────────────────
-def cargar_gastos() -> list[dict]:
-    if DATA_FILE.exists():
-        with open(DATA_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return []
+# ── Google Sheets helpers ────────────────────────────────────────────────────
+@st.cache_resource
+def get_worksheet():
+    creds = Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"], scopes=SCOPES
+    )
+    client = gspread.authorize(creds)
+    sh = client.open_by_url(st.secrets["sheet"]["url"])
+    return sh.sheet1
 
-def guardar_gastos(gastos: list[dict]):
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(gastos, f, ensure_ascii=False, indent=2, default=str)
+def cargar_gastos() -> list[dict]:
+    # Sin cache — siempre lee fresco desde Sheets
+    return get_worksheet().get_all_records()
+
+def agregar_gasto(nuevo: dict):
+    get_worksheet().append_row([
+        nuevo["descripcion"],
+        nuevo["costo"],
+        nuevo["categoria"],
+        nuevo["fecha"],
+    ])
+
+def eliminar_gasto(row_index: int):
+    """row_index es 0-based sobre los datos (sin encabezado)."""
+    get_worksheet().delete_rows(row_index + 2)  # +1 encabezado, +1 base 1
 
 def to_df(gastos: list[dict]) -> pd.DataFrame:
     if not gastos:
@@ -47,7 +75,7 @@ def to_df(gastos: list[dict]) -> pd.DataFrame:
     df = pd.DataFrame(gastos)
     df["fecha"] = pd.to_datetime(df["fecha"])
     df["costo"] = df["costo"].astype(float)
-    return df.sort_values("fecha", ascending=False)
+    return df.sort_values("fecha", ascending=False).reset_index(drop=True)
 
 # ── Page setup ───────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -178,6 +206,55 @@ hr { border-color: #2e2e3a; }
 </style>
 """, unsafe_allow_html=True)
 
+# ── Login ────────────────────────────────────────────────────────────────────
+def check_login():
+    cookie_manager = get_cookie_manager()
+    token_valido = make_token(st.secrets["auth"]["user"], st.secrets["auth"]["key"])
+
+    # ¿Ya hay cookie válida?
+    cookie = cookie_manager.get(COOKIE_NAME)
+    if cookie and cookie == token_valido:
+        st.session_state.autenticado = True
+
+    if st.session_state.get("autenticado"):
+        return True, cookie_manager
+
+    st.markdown("""
+    <div style='max-width:380px;margin:80px auto 0;'>
+        <div style='text-align:center;margin-bottom:2rem'>
+            <span style='font-size:3rem'>💸</span>
+            <h2 style='margin:.4rem 0 .2rem;font-weight:800;letter-spacing:-1px'>Mis Gastos</h2>
+            <p style='color:#555;font-family:DM Mono,monospace;font-size:.85rem'>acceso privado</p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    with st.form("login_form"):
+        col_l, col_c, col_r = st.columns([1, 2, 1])
+        with col_c:
+            usuario = st.text_input("Usuario", placeholder="usuario")
+            password = st.text_input("Contraseña", type="password", placeholder="••••••••")
+            entrar = st.form_submit_button("Entrar →", use_container_width=True, type="primary")
+
+        if entrar:
+            if (usuario == st.secrets["auth"]["user"] and
+                    password == st.secrets["auth"]["key"]):
+                st.session_state.autenticado = True
+                cookie_manager.set(
+                    COOKIE_NAME,
+                    token_valido,
+                    max_age=COOKIE_EXPIRY_DAYS * 24 * 3600,
+                )
+                st.rerun()
+            else:
+                st.error("Usuario o contraseña incorrectos.")
+
+    return False, cookie_manager
+
+autenticado, cookie_manager = check_login()
+if not autenticado:
+    st.stop()
+
 # ── Estado ───────────────────────────────────────────────────────────────────
 if "gastos" not in st.session_state:
     st.session_state.gastos = cargar_gastos()
@@ -185,8 +262,16 @@ if "gastos" not in st.session_state:
 gastos = st.session_state.gastos
 
 # ── Header ───────────────────────────────────────────────────────────────────
-st.markdown("# 💸 Gastos")
-st.markdown("<p style='color:#666;margin-top:-12px;font-family:DM Mono,monospace;font-size:.9rem'>control personal de gastos</p>", unsafe_allow_html=True)
+h1, h2 = st.columns([6, 1])
+with h1:
+    st.markdown("# 💸 Gastos")
+    st.markdown("<p style='color:#666;margin-top:-12px;font-family:DM Mono,monospace;font-size:.9rem'>control personal de gastos</p>", unsafe_allow_html=True)
+with h2:
+    st.markdown("<div style='margin-top:1.2rem'></div>", unsafe_allow_html=True)
+    if st.button("Salir →", use_container_width=True):
+        st.session_state.autenticado = False
+        cookie_manager.delete(COOKIE_NAME)
+        st.rerun()
 st.markdown("---")
 
 # ── Tabs ─────────────────────────────────────────────────────────────────────
@@ -230,10 +315,10 @@ with tab_registro:
                         "categoria": CATEGORIAS[cat_label],
                         "fecha": str(fecha),
                     }
-                    gastos.insert(0, nuevo)
-                    st.session_state.gastos = gastos
-                    guardar_gastos(gastos)
+                    agregar_gasto(nuevo)
+                    st.session_state.gastos = cargar_gastos()
                     st.success(f"✅ Gasto registrado: **{descripcion}** — ${costo:,.0f}")
+                    st.rerun()
 
     # ── LISTA ───────────────────────────────────────────────
     with col_lista:
@@ -290,9 +375,8 @@ with tab_registro:
                     with c2:
                         st.markdown("<div style='margin-top:.6rem'></div>", unsafe_allow_html=True)
                         if st.button("🗑", key=f"del_{i}", help="Eliminar gasto"):
-                            gastos_actualizado = [g for j, g in enumerate(gastos) if j != i]
-                            st.session_state.gastos = gastos_actualizado
-                            guardar_gastos(gastos_actualizado)
+                            eliminar_gasto(i)
+                            st.session_state.gastos = cargar_gastos()
                             st.rerun()
 
             st.markdown("---")
