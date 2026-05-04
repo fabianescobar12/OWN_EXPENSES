@@ -33,7 +33,8 @@ CATEGORIAS = {
     "👕 Vestimenta": "VESTIMENTA",
     "🖥️ Herramientas": "HERRAMIENTAS",
     "💳 Créditos": "CRÉDITOS",
-    "🤖 Trading": "TRADING"
+    "🤖 Trading": "TRADING",
+    "📚 Educación": "EDUCACIÓN"
 }
 
 COLORES = {
@@ -46,8 +47,10 @@ COLORES = {
     "VESTIMENTA": "#FF9671",       
     "HERRAMIENTAS": "#B0B0B0",     
     "CRÉDITOS": "#FF3D6A",
-    "TRADING": "#0A5216"           
+    "TRADING": "#0A5216",     
+    "EDUCACIÓN": "4D96FF"       
 }
+
 
 MESES_ES = {
     1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril",
