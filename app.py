@@ -32,7 +32,8 @@ CATEGORIAS = {
     "💵 Ahorros/Inversiones": "AHORROS/INVERSIONES",
     "👕 Vestimenta": "VESTIMENTA",
     "🖥️ Herramientas": "HERRAMIENTAS",
-    "💳 Créditos": "CRÉDITOS"
+    "💳 Créditos": "CRÉDITOS",
+    "🤖 Trading": "TRADING"
 }
 
 COLORES = {
@@ -44,7 +45,8 @@ COLORES = {
     "AHORROS/INVERSIONES": "#00C9A7", 
     "VESTIMENTA": "#FF9671",       
     "HERRAMIENTAS": "#B0B0B0",     
-    "CRÉDITOS": "#FF3D6A",             
+    "CRÉDITOS": "#FF3D6A",
+    "TRADING": "#0A5216"           
 }
 
 MESES_ES = {
