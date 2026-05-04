@@ -48,7 +48,7 @@ COLORES = {
     "HERRAMIENTAS": "#B0B0B0",     
     "CRÉDITOS": "#FF3D6A",
     "TRADING": "#0A5216",     
-    "EDUCACIÓN": "4D96FF"       
+    "EDUCACIÓN": "4D96FF"       # new
 }
 
 
